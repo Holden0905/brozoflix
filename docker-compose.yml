@@ -1,0 +1,14 @@
+# Runs on the NAS as-is: `docker compose up -d --build`.
+# No custom networks or address pools — UGOS manages Docker's data-root
+# via /etc/docker/daemon.json and nothing here touches it.
+services:
+  brozoflix:
+    build: .
+    image: brozoflix:latest
+    container_name: brozoflix
+    restart: unless-stopped
+    # Same variables as dev: SUPABASE_URL, SUPABASE_SERVICE_KEY, TMDB_TOKEN,
+    # APP_PASSPHRASE, COOKIE_SECRET (secrets stay out of the image).
+    env_file: .env.local
+    ports:
+      - "3000:3000"
