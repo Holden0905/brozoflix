@@ -11,7 +11,7 @@ export default function UnlockPage() {
         Brozoflix
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Family screening room. Say the magic words.
+        Stabilizing the Pax Bromana.
       </p>
       <Suspense>
         <UnlockForm />
