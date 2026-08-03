@@ -5,11 +5,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { TitleGrid } from "@/components/title-grid";
 import { formatStars, normalizeForSearch, sortKey } from "@/lib/format";
+import {
+  OWNERSHIP_LABELS,
+  OWNERSHIP_ORDER,
+  ownershipState,
+  type OwnershipState,
+} from "@/lib/physical";
 import { cn } from "@/lib/utils";
 import type { LibraryTitle } from "@/app/(gated)/page";
 
 type TypeFilter = "all" | "movie" | "show";
-type DiscFilter = "any" | "owned" | "missing";
+type FormatFilter = "any" | OwnershipState;
 type Sort = "added" | "title" | "year" | "rating";
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
@@ -21,7 +27,7 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
 export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<TypeFilter>("all");
-  const [disc, setDisc] = useState<DiscFilter>("any");
+  const [format, setFormat] = useState<FormatFilter>("any");
   const [sort, setSort] = useState<Sort>("title");
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +54,8 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
     () =>
       titles.map((t) => ({
         ...t,
+        // Derived, not stored: no disc row means digital only.
+        ownership: ownershipState(t.disc_format),
         search: `${normalizeForSearch(t.title)} ${t.year ?? ""}`,
         key: sortKey(t.title),
       })),
@@ -58,9 +66,9 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
     const q = normalizeForSearch(query);
     let out = indexed;
     if (type !== "all") out = out.filter((t) => t.media_type === type);
-    // "missing" is the inverse: on the server, but no disc on the shelf.
-    if (disc === "owned") out = out.filter((t) => t.disc_format !== null);
-    else if (disc === "missing") out = out.filter((t) => t.disc_format === null);
+    // The four states are exhaustive and mutually exclusive, so this is a
+    // plain equality check rather than an owned/not-owned split.
+    if (format !== "any") out = out.filter((t) => t.ownership === format);
     if (q) out = out.filter((t) => t.search.includes(q));
     const sorted = [...out];
     if (sort === "title") {
@@ -82,7 +90,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
       sorted.sort((a, b) => (b.date_added ?? "").localeCompare(a.date_added ?? ""));
     }
     return sorted;
-  }, [indexed, query, type, disc, sort]);
+  }, [indexed, query, type, format, sort]);
 
   const countLabel =
     visible.length === titles.length
@@ -132,18 +140,21 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
                 </button>
               ))}
             </div>
-            <label htmlFor="library-disc" className="sr-only">
-              Filter by disc
+            <label htmlFor="library-format" className="sr-only">
+              Filter by format
             </label>
             <select
-              id="library-disc"
-              value={disc}
-              onChange={(e) => setDisc(e.target.value as DiscFilter)}
+              id="library-format"
+              value={format}
+              onChange={(e) => setFormat(e.target.value as FormatFilter)}
               className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1"
             >
-              <option value="any">Disc: any</option>
-              <option value="owned">On disc</option>
-              <option value="missing">No disc</option>
+              <option value="any">Format: any</option>
+              {OWNERSHIP_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {OWNERSHIP_LABELS[s]}
+                </option>
+              ))}
             </select>
             <label htmlFor="library-sort" className="sr-only">
               Sort
@@ -169,21 +180,28 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-24 text-center">
           <p className="font-display text-3xl uppercase">Nothing here</p>
+          {/* A format filter hiding everything doesn't mean it isn't on the
+              server, so don't say that — and don't offer to request it. */}
           <p className="text-muted-foreground">
-            Not on the server{query ? ` — no match for “${query}”` : ""}.
+            {format === "any"
+              ? `Not on the server${query ? ` — no match for “${query}”` : ""}.`
+              : query
+                ? `No ${OWNERSHIP_LABELS[format]} titles match “${query}”.`
+                : `No titles are ${OWNERSHIP_LABELS[format]}.`}
           </p>
-          <Link
-            href={query ? `/wanted?q=${encodeURIComponent(query)}` : "/wanted"}
-            className="mt-1 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            Want it? Request it →
-          </Link>
+          {format === "any" && (
+            <Link
+              href={query ? `/wanted?q=${encodeURIComponent(query)}` : "/wanted"}
+              className="mt-1 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Want it? Request it →
+            </Link>
+          )}
         </div>
       ) : (
         <TitleGrid
           titles={visible.map((t) => ({
             ...t,
-            disc: t.disc_format,
             rating: t.rating_avg,
             ratingTitle: `${
               t.rating_avg === null ? "" : formatStars(t.rating_avg)

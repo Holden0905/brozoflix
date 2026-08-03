@@ -1,5 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import { FORMAT_LABELS, FORMAT_SHORT } from "@/lib/physical";
+import {
+  FORMAT_LABELS,
+  OWNERSHIP_LABELS,
+  OWNERSHIP_SHORT,
+  type OwnershipState,
+} from "@/lib/physical";
 import { cn } from "@/lib/utils";
 import type { DiscFormat } from "@/lib/types";
 
@@ -17,6 +22,12 @@ export function DiscIcon({ className }: { className?: string }) {
  * filled red of `bg-owned`, which in this app means only "it's on the server".
  * The two can appear side by side, so they must not be confusable.
  */
+const BADGE_STYLES: Record<DiscFormat, string> = {
+  uhd: "bg-uhd text-uhd-foreground",
+  bluray: "bg-bluray text-bluray-foreground",
+  dvd: "bg-dvd text-dvd-foreground",
+};
+
 export function DiscBadge({
   format,
   className,
@@ -25,25 +36,40 @@ export function DiscBadge({
   className?: string;
 }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1 border-border text-foreground", className)}
-    >
+    <Badge className={cn("gap-1 border-transparent", BADGE_STYLES[format], className)}>
       <DiscIcon />
       {FORMAT_LABELS[format]}
     </Badge>
   );
 }
 
-/** Poster-corner variant: a grid tile has no room for the full label. */
-export function DiscTileBadge({ format }: { format: DiscFormat }) {
+/*
+ * Grid-scale format chips. Solid light fills on the three disc states so they
+ * carry at arm's length against a black grid; "digital only" is the one ghost
+ * chip, which is right twice over — it's the absence of a disc, and it's the
+ * state you're *not* looking for when you're stood in a shop.
+ *
+ * No disc icon here: at 11px the glyph costs more width than it earns, and
+ * the colour already says "format".
+ */
+const TILE_STYLES: Record<OwnershipState, string> = {
+  uhd: "bg-uhd text-uhd-foreground",
+  bluray: "bg-bluray text-bluray-foreground",
+  dvd: "bg-dvd text-dvd-foreground",
+  digital: "border border-border/70 bg-background/80 text-muted-foreground backdrop-blur",
+};
+
+/** Poster-corner chip. Every library tile gets one — all four states. */
+export function OwnershipTileBadge({ state }: { state: OwnershipState }) {
   return (
     <span
-      className="pointer-events-none absolute left-1 top-1 inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-background/85 px-1.5 py-0.5 text-[10px] font-medium leading-none text-foreground backdrop-blur"
-      title={`On disc — ${FORMAT_LABELS[format]}`}
+      className={cn(
+        "pointer-events-none absolute left-1 top-1 rounded px-1.5 py-0.5 text-[11px] font-semibold leading-none tracking-wide",
+        TILE_STYLES[state]
+      )}
+      title={OWNERSHIP_LABELS[state]}
     >
-      <DiscIcon className="size-2.5" />
-      {FORMAT_SHORT[format]}
+      {OWNERSHIP_SHORT[state]}
     </span>
   );
 }

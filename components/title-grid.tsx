@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { DiscTileBadge } from "@/components/disc-badge";
+import { OwnershipTileBadge } from "@/components/disc-badge";
 import { Poster } from "@/components/poster";
 import { Star } from "@/components/stars";
 import { formatRuntime, formatSeasons, formatStars } from "@/lib/format";
-import type { DiscFormat, MediaType } from "@/lib/types";
+import type { OwnershipState } from "@/lib/physical";
+import type { MediaType } from "@/lib/types";
 
 export type GridTitle = {
   jellyfin_id: string;
@@ -20,8 +21,11 @@ export type GridTitle = {
   rating: number | null;
   /** Tooltip for the badge — what the number means differs per caller. */
   ratingTitle?: string;
-  /** Format of the disc owned for this title, if any. */
-  disc?: DiscFormat | null;
+  /**
+   * Ownership state to chip the poster with. Omitted outside the library —
+   * a person's ratings page isn't a shopping surface.
+   */
+  ownership?: OwnershipState | null;
 };
 
 /** The poster grid, shared so the library and a person's page stay identical. */
@@ -43,7 +47,7 @@ export function TitleGrid({ titles }: { titles: GridTitle[] }) {
               href={`/title/${t.jellyfin_id}`}
               className="group block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
             >
-              {/* Badge rides the poster corner — the meta line below is already
+              {/* Chip rides the poster corner — the meta line below is already
                   tight at three columns on a phone. */}
               <div className="relative">
                 <Poster
@@ -52,7 +56,7 @@ export function TitleGrid({ titles }: { titles: GridTitle[] }) {
                   priority={i < 6}
                   className="transition-opacity group-hover:opacity-80"
                 />
-                {t.disc && <DiscTileBadge format={t.disc} />}
+                {t.ownership && <OwnershipTileBadge state={t.ownership} />}
               </div>
               <p className="mt-1.5 truncate text-sm font-medium">{t.title}</p>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
