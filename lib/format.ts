@@ -68,6 +68,11 @@ export function averageHalfStars(values: number[]): number | null {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
+/** "The Dark Knight" sorts under D, collection-shelf style. */
+export function sortKey(title: string): string {
+  return normalizeForSearch(title).replace(/^(the|a|an) /, "");
+}
+
 export function posterUrl(
   path: string | null | undefined,
   size: "w500" | "w780" | "original" = "w500"

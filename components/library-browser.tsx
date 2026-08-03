@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Poster } from "@/components/poster";
-import { Star } from "@/components/stars";
-import {
-  formatStars,
-  formatRuntime,
-  formatSeasons,
-  normalizeForSearch,
-} from "@/lib/format";
+import { TitleGrid } from "@/components/title-grid";
+import { formatStars, normalizeForSearch, sortKey } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LibraryTitle } from "@/app/(gated)/page";
 
@@ -22,11 +16,6 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "movie", label: "Movies" },
   { value: "show", label: "Shows" },
 ];
-
-/** "The Dark Knight" sorts under D, collection-shelf style. */
-function sortKey(title: string): string {
-  return normalizeForSearch(title).replace(/^(the|a|an) /, "");
-}
 
 export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
   const [query, setQuery] = useState("");
@@ -173,48 +162,15 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
           </Link>
         </div>
       ) : (
-        <ul className="mt-5 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 sm:gap-x-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
-          {visible.map((t, i) => {
-            const meta = [
-              t.year,
-              t.media_type === "show"
-                ? formatSeasons(t.seasons)
-                : formatRuntime(t.runtime_min),
-            ]
-              .filter(Boolean)
-              .join(" · ");
-            return (
-              <li key={t.jellyfin_id}>
-                <Link
-                  href={`/title/${t.jellyfin_id}`}
-                  className="group block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
-                >
-                  <Poster
-                    path={t.poster_path}
-                    title={t.title}
-                    priority={i < 6}
-                    className="transition-opacity group-hover:opacity-80"
-                  />
-                  <p className="mt-1.5 truncate text-sm font-medium">{t.title}</p>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="min-w-0 truncate">{meta}</span>
-                    {t.rating_avg !== null && (
-                      <span
-                        className="ml-auto inline-flex shrink-0 items-center gap-0.5 tabular-nums"
-                        title={`${formatStars(t.rating_avg)} from ${t.rating_count} ${
-                          t.rating_count === 1 ? "rating" : "ratings"
-                        }`}
-                      >
-                        <Star fill={1} className="size-3" />
-                        {formatStars(t.rating_avg)}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <TitleGrid
+          titles={visible.map((t) => ({
+            ...t,
+            rating: t.rating_avg,
+            ratingTitle: `${
+              t.rating_avg === null ? "" : formatStars(t.rating_avg)
+            } from ${t.rating_count} ${t.rating_count === 1 ? "rating" : "ratings"}`,
+          }))}
+        />
       )}
     </div>
   );
