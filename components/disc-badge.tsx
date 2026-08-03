@@ -1,12 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import {
-  FORMAT_LABELS,
   OWNERSHIP_LABELS,
   OWNERSHIP_SHORT,
   type OwnershipState,
 } from "@/lib/physical";
 import { cn } from "@/lib/utils";
-import type { DiscFormat } from "@/lib/types";
 
 export function DiscIcon({ className }: { className?: string }) {
   return (
@@ -18,27 +16,32 @@ export function DiscIcon({ className }: { className?: string }) {
 }
 
 /**
- * Disc ownership reads as an outlined, icon-led chip — deliberately not the
- * filled red of `bg-owned`, which in this app means only "it's on the server".
- * The two can appear side by side, so they must not be confusable.
+ * Ownership as an inline chip, in the same colours the grid uses — deliberately
+ * not the filled red of `bg-owned`, which in this app means only "it's on the
+ * server". The two can appear side by side, so they must not be confusable.
+ *
+ * Covers all four states: "digital only" is a ghost chip and drops the disc
+ * glyph, since a disc icon on the no-disc state would say the opposite of what
+ * it means.
  */
-const BADGE_STYLES: Record<DiscFormat, string> = {
-  uhd: "bg-uhd text-uhd-foreground",
-  bluray: "bg-bluray text-bluray-foreground",
-  dvd: "bg-dvd text-dvd-foreground",
+const BADGE_STYLES: Record<OwnershipState, string> = {
+  uhd: "border-transparent bg-uhd text-uhd-foreground",
+  bluray: "border-transparent bg-bluray text-bluray-foreground",
+  dvd: "border-transparent bg-dvd text-dvd-foreground",
+  digital: "border-border bg-transparent text-muted-foreground",
 };
 
-export function DiscBadge({
-  format,
+export function OwnershipBadge({
+  state,
   className,
 }: {
-  format: DiscFormat;
+  state: OwnershipState;
   className?: string;
 }) {
   return (
-    <Badge className={cn("gap-1 border-transparent", BADGE_STYLES[format], className)}>
-      <DiscIcon />
-      {FORMAT_LABELS[format]}
+    <Badge className={cn("gap-1", BADGE_STYLES[state], className)}>
+      {state !== "digital" && <DiscIcon />}
+      {OWNERSHIP_LABELS[state]}
     </Badge>
   );
 }

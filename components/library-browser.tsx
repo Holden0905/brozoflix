@@ -15,8 +15,12 @@ import { cn } from "@/lib/utils";
 import type { LibraryTitle } from "@/app/(gated)/page";
 
 type TypeFilter = "all" | "movie" | "show";
-type FormatFilter = "any" | OwnershipState;
+/** "disc" is the union of the three physical states — "everything I own on
+ *  disc" is a real question that no single one of the four states answers. */
+type FormatFilter = "any" | "disc" | OwnershipState;
 type Sort = "added" | "title" | "year" | "rating";
+
+const ANY_DISC_LABEL = "Any disc";
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -66,9 +70,8 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
     const q = normalizeForSearch(query);
     let out = indexed;
     if (type !== "all") out = out.filter((t) => t.media_type === type);
-    // The four states are exhaustive and mutually exclusive, so this is a
-    // plain equality check rather than an owned/not-owned split.
-    if (format !== "any") out = out.filter((t) => t.ownership === format);
+    if (format === "disc") out = out.filter((t) => t.ownership !== "digital");
+    else if (format !== "any") out = out.filter((t) => t.ownership === format);
     if (q) out = out.filter((t) => t.search.includes(q));
     const sorted = [...out];
     if (sort === "title") {
@@ -96,6 +99,20 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
     visible.length === titles.length
       ? `${titles.length} titles`
       : `${visible.length} of ${titles.length}`;
+
+  // A format filter hiding everything doesn't mean it isn't on the server, so
+  // the copy must not say that — and the request CTA must not appear.
+  const emptyMessage = (() => {
+    if (format === "any") {
+      return `Not on the server${query ? ` — no match for “${query}”` : ""}.`;
+    }
+    if (format === "disc") {
+      return query ? `No titles on disc match “${query}”.` : "No titles are on disc.";
+    }
+    return query
+      ? `No ${OWNERSHIP_LABELS[format]} titles match “${query}”.`
+      : `No titles are ${OWNERSHIP_LABELS[format]}.`;
+  })();
 
   return (
     <div>
@@ -150,6 +167,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
               className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1"
             >
               <option value="any">Format: any</option>
+              <option value="disc">{ANY_DISC_LABEL}</option>
               {OWNERSHIP_ORDER.map((s) => (
                 <option key={s} value={s}>
                   {OWNERSHIP_LABELS[s]}
@@ -180,15 +198,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-24 text-center">
           <p className="font-display text-3xl uppercase">Nothing here</p>
-          {/* A format filter hiding everything doesn't mean it isn't on the
-              server, so don't say that — and don't offer to request it. */}
-          <p className="text-muted-foreground">
-            {format === "any"
-              ? `Not on the server${query ? ` — no match for “${query}”` : ""}.`
-              : query
-                ? `No ${OWNERSHIP_LABELS[format]} titles match “${query}”.`
-                : `No titles are ${OWNERSHIP_LABELS[format]}.`}
-          </p>
+          <p className="text-muted-foreground">{emptyMessage}</p>
           {format === "any" && (
             <Link
               href={query ? `/wanted?q=${encodeURIComponent(query)}` : "/wanted"}

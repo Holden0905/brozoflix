@@ -52,7 +52,8 @@ export interface PhysicalMedia {
   id: string;
   media_type: MediaType;
   tmdb_id: number;
-  title: string | null;
+  /** NOT NULL in the table — a shelf row must be able to render on its own. */
+  title: string;
   year: number | null;
   poster_path: string | null;
   format: DiscFormat;

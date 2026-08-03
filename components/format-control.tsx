@@ -24,7 +24,7 @@ export function FormatControl({
 }: {
   mediaType: MediaType;
   tmdbId: number;
-  title: string | null;
+  title: string;
   year: number | null;
   posterPath: string | null;
   initial: PhysicalMedia | null;

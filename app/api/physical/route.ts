@@ -56,10 +56,14 @@ export async function POST(req: NextRequest) {
     return bad(`Note must be ${NOTE_MAX_LEN} characters or fewer.`);
   }
 
+  // title is NOT NULL in the table. Every UI path supplies one (from `titles`
+  // or from the TMDB result), so catch a missing one as a 400 here rather than
+  // letting Postgres turn it into a 500.
   const title =
     typeof body.title === "string" && body.title.trim()
       ? body.title.trim().slice(0, 300)
       : null;
+  if (!title) return bad("title is required.");
   const year =
     Number.isInteger(body.year) && body.year > 1800 && body.year < 3000
       ? body.year

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DiscBadge, DiscIcon } from "@/components/disc-badge";
+import { DiscIcon, OwnershipBadge } from "@/components/disc-badge";
 import { PosterThumb } from "@/components/poster-thumb";
 import { OwnedBadge, TmdbSearch } from "@/components/tmdb-search";
 import { Badge } from "@/components/ui/badge";
@@ -226,7 +226,7 @@ function DiscRow({ item, isAdmin }: { item: ShelfItem; isAdmin: boolean }) {
   const heading = (
     <>
       <p className="truncate font-medium">
-        {item.title ?? "Untitled"}
+        {item.title}
         {item.year && (
           <span className="ml-1.5 text-sm text-muted-foreground">{item.year}</span>
         )}
@@ -243,7 +243,7 @@ function DiscRow({ item, isAdmin }: { item: ShelfItem; isAdmin: boolean }) {
       <div className="flex items-center gap-3">
         <PosterThumb
           path={item.poster_path}
-          title={item.title ?? "Untitled"}
+          title={item.title}
           className={item.jellyfin_id ? undefined : "opacity-60"}
         />
         <div className="min-w-0 flex-1">
@@ -258,7 +258,7 @@ function DiscRow({ item, isAdmin }: { item: ShelfItem; isAdmin: boolean }) {
             <div className="min-w-0">{heading}</div>
           )}
         </div>
-        <DiscBadge format={item.format} className="shrink-0" />
+        <OwnershipBadge state={item.format} className="shrink-0" />
       </div>
 
       {isAdmin && (

@@ -3,13 +3,14 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { DiscBadge } from "@/components/disc-badge";
+import { OwnershipBadge } from "@/components/disc-badge";
 import { FormatControl } from "@/components/format-control";
 import { Poster } from "@/components/poster";
 import { RatingControl } from "@/components/rating-control";
 import { db } from "@/lib/db";
 import { formatRuntime, formatSeasons, posterUrl } from "@/lib/format";
 import { NAME_COOKIE, validateName } from "@/lib/identity";
+import { ownershipState } from "@/lib/physical";
 import { SESSION_COOKIE, getSessionRole } from "@/lib/session";
 import type { PhysicalMedia, Rating, Title } from "@/lib/types";
 
@@ -83,9 +84,28 @@ export default async function TitleDetailPage({ params }: Props) {
       }).format(new Date(t.date_added))
     : null;
 
-  const jellyfinUrl = process.env.JELLYFIN_URL
-    ? `${process.env.JELLYFIN_URL.replace(/\/$/, "")}/web/index.html#!/details?id=${t.jellyfin_id}`
-    : null;
+  // Neither address reaches the server from everywhere — the LAN one only on
+  // the home network, the Tailscale one only when Tailscale is up — so offer
+  // both and let people tap whichever applies instead of guessing wrong.
+  // JELLYFIN_URL stays the LAN address because the sync script depends on it.
+  const jellyfinLinks = [
+    { label: "Jellyfin (home)", hint: "Works on the home network", base: process.env.JELLYFIN_URL },
+    {
+      label: "Jellyfin (Tailscale)",
+      hint: "Works when Tailscale is running on this device",
+      base: process.env.JELLYFIN_PUBLIC_URL,
+    },
+  ].flatMap(({ label, hint, base }) =>
+    base
+      ? [
+          {
+            label,
+            hint,
+            href: `${base.replace(/\/$/, "")}/web/index.html#!/details?id=${t.jellyfin_id}`,
+          },
+        ]
+      : []
+  );
 
   return (
     <article className="-mx-4 sm:-mx-6">
@@ -122,14 +142,15 @@ export default async function TitleDetailPage({ params }: Props) {
             {meta && (
               <p className="mt-2 text-sm text-muted-foreground sm:text-base">{meta}</p>
             )}
-            {disc && (
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <DiscBadge format={disc.format} />
-                {disc.note && (
-                  <span className="min-w-0 text-xs text-muted-foreground">{disc.note}</span>
-                )}
-              </div>
-            )}
+            {/* Always rendered: every title on the server is in exactly one of
+                the four states, so "no disc row" must still show its chip
+                rather than nothing at all. */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <OwnershipBadge state={ownershipState(disc?.format)} />
+              {disc?.note && (
+                <span className="min-w-0 text-xs text-muted-foreground">{disc.note}</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -185,14 +206,16 @@ export default async function TitleDetailPage({ params }: Props) {
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             {added && <span>Added {added}</span>}
-            {jellyfinUrl && (
+            {jellyfinLinks.map(({ label, hint, href }) => (
               <a
-                href={jellyfinUrl}
+                key={label}
+                href={href}
+                title={hint}
                 className="underline underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
               >
-                Open in Jellyfin
+                {label}
               </a>
-            )}
+            ))}
             {t.imdb_id && (
               <a
                 href={`https://www.imdb.com/title/${t.imdb_id}/`}
