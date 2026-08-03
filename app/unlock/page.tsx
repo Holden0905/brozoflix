@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Unlock" };
 
 export default function UnlockPage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 pt-safe pb-safe">
       <h1 className="font-display text-5xl uppercase tracking-wide sm:text-6xl">
         Brozoflix
       </h1>

@@ -80,7 +80,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 -mx-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="sticky top-safe z-10 -mx-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-col gap-2.5">
           <div className="relative">
             <label htmlFor="library-search" className="sr-only">
