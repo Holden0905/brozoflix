@@ -33,6 +33,14 @@ export interface TitleRequest {
   created_at: string;
 }
 
+export interface Rating {
+  id: string;
+  jellyfin_id: string;
+  rated_by: string;
+  stars: number;
+  created_at: string;
+}
+
 export interface SearchResult {
   media_type: MediaType;
   tmdb_id: number;

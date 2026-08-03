@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { NAME_COOKIE, nameCookieOptions } from "@/lib/identity";
 
 const NOTE_CAP = 1000; // keep collision-appended notes from growing forever
 
 function bad(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
+}
+
+/**
+ * Requests and ratings share one honor-system identity, so asking for
+ * something also teaches the app your name (and vice versa).
+ */
+function withName(res: NextResponse, req: Request, name: string) {
+  res.cookies.set(NAME_COOKIE, name, nameCookieOptions(req));
+  return res;
 }
 
 export async function POST(req: Request) {
@@ -56,11 +66,15 @@ export async function POST(req: Request) {
     );
   }
   if (ownedRow) {
-    return NextResponse.json({
-      ok: true,
-      owned: true,
-      jellyfin_id: ownedRow.jellyfin_id,
-    });
+    return withName(
+      NextResponse.json({
+        ok: true,
+        owned: true,
+        jellyfin_id: ownedRow.jellyfin_id,
+      }),
+      req,
+      requested_by
+    );
   }
 
   const { error } = await db.from("requests").insert({
@@ -73,7 +87,13 @@ export async function POST(req: Request) {
     note,
   });
 
-  if (!error) return NextResponse.json({ ok: true }, { status: 201 });
+  if (!error) {
+    return withName(
+      NextResponse.json({ ok: true }, { status: 201 }),
+      req,
+      requested_by
+    );
+  }
 
   // unique (media_type, tmdb_id): someone already asked. Append, don't error.
   if (error.code === "23505") {
@@ -107,12 +127,16 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      deduped: true,
-      status: existing.status,
-      first_requested_by: existing.requested_by,
-    });
+    return withName(
+      NextResponse.json({
+        ok: true,
+        deduped: true,
+        status: existing.status,
+        first_requested_by: existing.requested_by,
+      }),
+      req,
+      requested_by
+    );
   }
 
   return NextResponse.json(

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Poster } from "@/components/poster";
+import { RatingControl } from "@/components/rating-control";
 import { db } from "@/lib/db";
 import { formatRuntime, formatSeasons, posterUrl } from "@/lib/format";
-import type { Title } from "@/lib/types";
+import { NAME_COOKIE, validateName } from "@/lib/identity";
+import type { Rating, Title } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -29,8 +32,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TitleDetailPage({ params }: Props) {
   const { jellyfin_id } = await params;
-  const t = await getTitle(jellyfin_id);
+  const [t, { data: ratingRows, error: ratingErr }, cookieStore] = await Promise.all([
+    getTitle(jellyfin_id),
+    db
+      .from("ratings")
+      .select("id, jellyfin_id, rated_by, stars, created_at")
+      .eq("jellyfin_id", jellyfin_id)
+      .order("created_at", { ascending: true }),
+    cookies(),
+  ]);
   if (!t) notFound();
+  if (ratingErr) throw new Error(`Failed to load ratings: ${ratingErr.message}`);
+
+  const viewerName = validateName(cookieStore.get(NAME_COOKIE)?.value);
 
   const backdrop = posterUrl(t.backdrop_path, "original");
   const meta = [
@@ -125,6 +139,12 @@ export default async function TitleDetailPage({ params }: Props) {
               </ul>
             </div>
           )}
+
+          <RatingControl
+            jellyfinId={t.jellyfin_id}
+            viewerName={viewerName}
+            initialRatings={(ratingRows ?? []) as Rating[]}
+          />
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             {added && <span>Added {added}</span>}

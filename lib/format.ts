@@ -41,6 +41,33 @@ export function normalizeForSearch(s: string): string {
     .trim();
 }
 
+/*
+ * Ratings are stored as int half-star units, 1–10. Nobody ever sees a 10:
+ * every value on its way to a screen goes through toStars/formatStars first.
+ */
+export const MIN_HALF_STARS = 1;
+export const MAX_HALF_STARS = 10;
+
+/** 7 → 3.5. Storage units → the 0.5–5 scale people actually read. */
+export function toStars(halfStars: number): number {
+  return halfStars / 2;
+}
+
+/**
+ * 8 → "4" · 9 → "4.5" · 7.5 (an average) → "3.8".
+ * One decimal only when it carries information — never "4.0".
+ */
+export function formatStars(halfStars: number): string {
+  const stars = Math.round(toStars(halfStars) * 10) / 10;
+  return Number.isInteger(stars) ? `${stars}` : stars.toFixed(1);
+}
+
+/** Mean in raw half-star units, or null when nobody has rated. */
+export function averageHalfStars(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
 export function posterUrl(
   path: string | null | undefined,
   size: "w500" | "w780" | "original" = "w500"

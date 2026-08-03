@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { NameControl } from "@/components/name-control";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { SearchResult, TitleRequest } from "@/lib/types";
 
+// Superseded by the brozoflix_name cookie, which the server can also read.
+// Still read once so anyone who already typed their name here keeps it.
 const NAME_KEY = "brozoflix:name";
 
 function thumb(path: string | null): string | null {
@@ -47,9 +50,11 @@ function PosterThumb({ path, title }: { path: string | null; title: string }) {
 
 function SearchSection({
   initialQuery,
+  viewerName,
   onRequested,
 }: {
   initialQuery: string;
+  viewerName: string | null;
   onRequested: () => void;
 }) {
   const [query, setQuery] = useState(initialQuery);
@@ -167,6 +172,7 @@ function SearchSection({
                 {isPicked && !alreadySent && (
                   <RequestForm
                     result={r}
+                    viewerName={viewerName}
                     onDone={(sent) => {
                       setPicked(null);
                       if (sent) {
@@ -187,24 +193,27 @@ function SearchSection({
 
 function RequestForm({
   result,
+  viewerName,
   onDone,
 }: {
   result: SearchResult;
+  viewerName: string | null;
   onDone: (sent: boolean) => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(viewerName ?? "");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
   useEffect(() => {
+    if (viewerName) return; // the cookie is the source of truth
     try {
       setName(localStorage.getItem(NAME_KEY) ?? "");
     } catch {
       // localStorage unavailable (private mode) — start blank
     }
-  }, []);
+  }, [viewerName]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -475,10 +484,12 @@ export function WantedClient({
   requests,
   initialQuery,
   isAdmin,
+  viewerName,
 }: {
   requests: TitleRequest[];
   initialQuery: string;
   isAdmin: boolean;
+  viewerName: string | null;
 }) {
   const router = useRouter();
   return (
@@ -487,8 +498,13 @@ export function WantedClient({
       <p className="mt-1 text-sm text-muted-foreground">
         Not on the server? Put it on the list.
       </p>
+      <NameControl name={viewerName} verb="You're" className="mt-1" />
       <div className="mt-5">
-        <SearchSection initialQuery={initialQuery} onRequested={() => router.refresh()} />
+        <SearchSection
+          initialQuery={initialQuery}
+          viewerName={viewerName}
+          onRequested={() => router.refresh()}
+        />
       </div>
       <h2 className="mt-10 font-display text-xl uppercase tracking-wide">The list</h2>
       <div className="mt-3">

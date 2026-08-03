@@ -4,12 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Poster } from "@/components/poster";
-import { formatRuntime, formatSeasons, normalizeForSearch } from "@/lib/format";
+import { Star } from "@/components/stars";
+import {
+  formatStars,
+  formatRuntime,
+  formatSeasons,
+  normalizeForSearch,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LibraryTitle } from "@/app/(gated)/page";
 
 type TypeFilter = "all" | "movie" | "show";
-type Sort = "added" | "title" | "year";
+type Sort = "added" | "title" | "year" | "rating";
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -67,6 +73,17 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
       sorted.sort((a, b) => a.key.localeCompare(b.key));
     } else if (sort === "year") {
       sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.key.localeCompare(b.key));
+    } else if (sort === "rating") {
+      // Unrated sorts last rather than as zero — "nobody has said" isn't the
+      // same claim as "everybody hated it".
+      sorted.sort((a, b) => {
+        if (a.rating_avg === null && b.rating_avg === null) {
+          return a.key.localeCompare(b.key);
+        }
+        if (a.rating_avg === null) return 1;
+        if (b.rating_avg === null) return -1;
+        return b.rating_avg - a.rating_avg || a.key.localeCompare(b.key);
+      });
     } else {
       sorted.sort((a, b) => (b.date_added ?? "").localeCompare(a.date_added ?? ""));
     }
@@ -133,6 +150,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
               <option value="title">Title A–Z</option>
               <option value="added">Recently added</option>
               <option value="year">Year</option>
+              <option value="rating">Highest rated</option>
             </select>
             <span className="ml-auto text-sm tabular-nums text-muted-foreground">
               {countLabel}
@@ -178,7 +196,20 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
                     className="transition-opacity group-hover:opacity-80"
                   />
                   <p className="mt-1.5 truncate text-sm font-medium">{t.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{meta}</p>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{meta}</span>
+                    {t.rating_avg !== null && (
+                      <span
+                        className="ml-auto inline-flex shrink-0 items-center gap-0.5 tabular-nums"
+                        title={`${formatStars(t.rating_avg)} from ${t.rating_count} ${
+                          t.rating_count === 1 ? "rating" : "ratings"
+                        }`}
+                      >
+                        <Star fill={1} className="size-3" />
+                        {formatStars(t.rating_avg)}
+                      </span>
+                    )}
+                  </div>
                 </Link>
               </li>
             );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { WantedClient } from "@/components/wanted-client";
+import { NAME_COOKIE, validateName } from "@/lib/identity";
 import { SESSION_COOKIE, getSessionRole } from "@/lib/session";
 import type { TitleRequest } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export default async function WantedPage({ searchParams }: Props) {
       requests={(data ?? []) as TitleRequest[]}
       initialQuery={typeof q === "string" ? q : ""}
       isAdmin={role === "admin"}
+      viewerName={validateName(cookieStore.get(NAME_COOKIE)?.value)}
     />
   );
 }
