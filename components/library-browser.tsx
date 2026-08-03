@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { LibraryTitle } from "@/app/(gated)/page";
 
 type TypeFilter = "all" | "movie" | "show";
+type DiscFilter = "any" | "owned" | "missing";
 type Sort = "added" | "title" | "year" | "rating";
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
@@ -20,6 +21,7 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
 export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<TypeFilter>("all");
+  const [disc, setDisc] = useState<DiscFilter>("any");
   const [sort, setSort] = useState<Sort>("title");
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +58,9 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
     const q = normalizeForSearch(query);
     let out = indexed;
     if (type !== "all") out = out.filter((t) => t.media_type === type);
+    // "missing" is the inverse: on the server, but no disc on the shelf.
+    if (disc === "owned") out = out.filter((t) => t.disc_format !== null);
+    else if (disc === "missing") out = out.filter((t) => t.disc_format === null);
     if (q) out = out.filter((t) => t.search.includes(q));
     const sorted = [...out];
     if (sort === "title") {
@@ -77,7 +82,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
       sorted.sort((a, b) => (b.date_added ?? "").localeCompare(a.date_added ?? ""));
     }
     return sorted;
-  }, [indexed, query, type, sort]);
+  }, [indexed, query, type, disc, sort]);
 
   const countLabel =
     visible.length === titles.length
@@ -127,6 +132,19 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
                 </button>
               ))}
             </div>
+            <label htmlFor="library-disc" className="sr-only">
+              Filter by disc
+            </label>
+            <select
+              id="library-disc"
+              value={disc}
+              onChange={(e) => setDisc(e.target.value as DiscFilter)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1"
+            >
+              <option value="any">Disc: any</option>
+              <option value="owned">On disc</option>
+              <option value="missing">No disc</option>
+            </select>
             <label htmlFor="library-sort" className="sr-only">
               Sort
             </label>
@@ -165,6 +183,7 @@ export function LibraryBrowser({ titles }: { titles: LibraryTitle[] }) {
         <TitleGrid
           titles={visible.map((t) => ({
             ...t,
+            disc: t.disc_format,
             rating: t.rating_avg,
             ratingTitle: `${
               t.rating_avg === null ? "" : formatStars(t.rating_avg)

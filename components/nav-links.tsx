@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/", label: "Library" },
+  { href: "/shelf", label: "Shelf" },
   { href: "/people", label: "People" },
   { href: "/wanted", label: "Wanted" },
 ] as const;
@@ -23,7 +24,7 @@ export function NavLinks() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+              "rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 focus-visible:outline-2 focus-visible:outline-offset-2",
               active
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"

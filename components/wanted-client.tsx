@@ -1,10 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { NameControl } from "@/components/name-control";
+import { PosterThumb } from "@/components/poster-thumb";
+import { OwnedBadge, TmdbSearch } from "@/components/tmdb-search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,36 +16,6 @@ import type { SearchResult, TitleRequest } from "@/lib/types";
 // Superseded by the brozoflix_name cookie, which the server can also read.
 // Still read once so anyone who already typed their name here keeps it.
 const NAME_KEY = "brozoflix:name";
-
-function thumb(path: string | null): string | null {
-  return path ? `https://image.tmdb.org/t/p/w154${path}` : null;
-}
-
-function OwnedBadge() {
-  return (
-    <Badge className="shrink-0 bg-owned text-owned-foreground">
-      <svg
-        viewBox="0 0 12 12"
-        aria-hidden
-        className="size-3 fill-none stroke-current stroke-2"
-      >
-        <path d="M2 6.5 4.5 9 10 3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      In library
-    </Badge>
-  );
-}
-
-function PosterThumb({ path, title }: { path: string | null; title: string }) {
-  const src = thumb(path);
-  return (
-    <div className="relative aspect-[2/3] w-12 shrink-0 overflow-hidden rounded bg-muted sm:w-14">
-      {src && (
-        <Image src={src} alt={`${title} poster`} fill sizes="56px" className="object-cover" />
-      )}
-    </div>
-  );
-}
 
 /* ---------- search + request flow ---------- */
 
@@ -57,137 +28,61 @@ function SearchSection({
   viewerName: string | null;
   onRequested: () => void;
 }) {
-  const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<SearchResult[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [picked, setPicked] = useState<SearchResult | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const [locallyRequested, setLocallyRequested] = useState<Set<string>>(new Set());
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    const q = query.trim();
-    if (!q) {
-      setResults(null);
-      setSearching(false);
-      abortRef.current?.abort();
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      try {
-        const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`, {
-          signal: ctrl.signal,
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setResults(data.results ?? []);
-      } catch (err) {
-        if (!(err instanceof DOMException && err.name === "AbortError")) {
-          setResults([]);
-        }
-      } finally {
-        if (!ctrl.signal.aborted) setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const keyOf = (r: SearchResult) => `${r.media_type}:${r.tmdb_id}`;
 
   return (
-    <section aria-label="Search for something to request">
-      <label htmlFor="wanted-search" className="sr-only">
-        Search movies and shows
-      </label>
-      <Input
-        id="wanted-search"
-        type="search"
-        enterKeyHint="search"
-        autoComplete="off"
-        placeholder="Search for a movie or show to request…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="h-11 text-base"
-      />
-      <div aria-live="polite" className="mt-1 min-h-5 text-xs text-muted-foreground">
-        {searching ? "Searching…" : null}
-      </div>
-
-      {results !== null && (
-        <ul className="mt-2 divide-y divide-border rounded-md border border-border">
-          {results.length === 0 && !searching && (
-            <li className="p-4 text-sm text-muted-foreground">
-              TMDB has nothing for “{query.trim()}”. Check the spelling?
-            </li>
-          )}
-          {results.map((r) => {
-            const key = keyOf(r);
-            const isPicked =
-              picked && picked.tmdb_id === r.tmdb_id && picked.media_type === r.media_type;
-            const alreadySent = locallyRequested.has(key);
-            return (
-              <li key={key} className="p-3">
-                <div className="flex items-center gap-3">
-                  <PosterThumb path={r.poster_path} title={r.title} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">
-                      {r.title}
-                      {r.year && (
-                        <span className="ml-1.5 text-sm text-muted-foreground">
-                          {r.year}
-                        </span>
-                      )}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {r.media_type === "show" ? "Show" : "Movie"}
-                      {r.overview ? ` · ${r.overview}` : ""}
-                    </p>
-                  </div>
-                  {r.owned && r.jellyfin_id ? (
-                    <Link
-                      href={`/title/${r.jellyfin_id}`}
-                      className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
-                      aria-label={`${r.title} is already in the library — view it`}
-                    >
-                      <OwnedBadge />
-                    </Link>
-                  ) : alreadySent ? (
-                    <Badge variant="secondary" className="shrink-0">
-                      Requested ✓
-                    </Badge>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isPicked ? "secondary" : "default"}
-                      onClick={() => setPicked(isPicked ? null : r)}
-                    >
-                      {isPicked ? "Cancel" : "Request"}
-                    </Button>
-                  )}
-                </div>
-                {isPicked && !alreadySent && (
-                  <RequestForm
-                    result={r}
-                    viewerName={viewerName}
-                    onDone={(sent) => {
-                      setPicked(null);
-                      if (sent) {
-                        setLocallyRequested((prev) => new Set(prev).add(key));
-                        onRequested();
-                      }
-                    }}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+    <TmdbSearch
+      id="wanted-search"
+      label="Search movies and shows"
+      placeholder="Search for a movie or show to request…"
+      initialQuery={initialQuery}
+      renderAction={(r, key) => {
+        if (r.owned && r.jellyfin_id) {
+          return (
+            <Link
+              href={`/title/${r.jellyfin_id}`}
+              className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
+              aria-label={`${r.title} is already in the library — view it`}
+            >
+              <OwnedBadge />
+            </Link>
+          );
+        }
+        if (locallyRequested.has(key)) {
+          return (
+            <Badge variant="secondary" className="shrink-0">
+              Requested ✓
+            </Badge>
+          );
+        }
+        return (
+          <Button
+            type="button"
+            size="sm"
+            variant={picked === key ? "secondary" : "default"}
+            onClick={() => setPicked(picked === key ? null : key)}
+          >
+            {picked === key ? "Cancel" : "Request"}
+          </Button>
+        );
+      }}
+      renderBody={(r, key) =>
+        picked === key && !locallyRequested.has(key) ? (
+          <RequestForm
+            result={r}
+            viewerName={viewerName}
+            onDone={(sent) => {
+              setPicked(null);
+              if (sent) {
+                setLocallyRequested((prev) => new Set(prev).add(key));
+                onRequested();
+              }
+            }}
+          />
+        ) : null
+      }
+    />
   );
 }
 

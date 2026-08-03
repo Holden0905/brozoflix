@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { LibraryBrowser } from "@/components/library-browser";
-import type { Title } from "@/lib/types";
+import { discKey } from "@/lib/physical";
+import type { DiscFormat, Title } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export type LibraryTitle = Pick<
   Title,
   | "jellyfin_id"
   | "media_type"
+  | "tmdb_id"
   | "title"
   | "year"
   | "runtime_min"
@@ -15,6 +17,8 @@ export type LibraryTitle = Pick<
   | "seasons"
   | "date_added"
 > & {
+  /** Format of the disc we own, or null when there isn't one. */
+  disc_format: DiscFormat | null;
   /**
    * Mean in raw half-star units (1–10), so "Highest rated" sorts on the
    * stored int and only the display divides down. null when nobody has rated
@@ -26,14 +30,19 @@ export type LibraryTitle = Pick<
 };
 
 export default async function LibraryPage() {
-  const [{ data, error }, { data: ratingRows, error: ratingErr }] = await Promise.all([
+  const [
+    { data, error },
+    { data: ratingRows, error: ratingErr },
+    { data: discRows, error: discErr },
+  ] = await Promise.all([
     db
       .from("titles")
       .select(
-        "jellyfin_id, media_type, title, year, runtime_min, poster_path, seasons, date_added"
+        "jellyfin_id, media_type, tmdb_id, title, year, runtime_min, poster_path, seasons, date_added"
       )
       .order("date_added", { ascending: false }),
     db.from("ratings").select("jellyfin_id, stars"),
+    db.from("physical_media").select("media_type, tmdb_id, format"),
   ]);
 
   if (error) {
@@ -42,6 +51,13 @@ export default async function LibraryPage() {
   if (ratingErr) {
     throw new Error(`Failed to load ratings: ${ratingErr.message}`);
   }
+  if (discErr) {
+    throw new Error(`Failed to load disc info: ${discErr.message}`);
+  }
+
+  const discs = new Map<string, DiscFormat>(
+    (discRows ?? []).map((d) => [discKey(d.media_type, d.tmdb_id), d.format])
+  );
 
   // Aggregated here rather than in SQL: PostgREST would need an explicit view
   // or aggregate opt-in, and a household's rating count is trivially small.
@@ -56,9 +72,10 @@ export default async function LibraryPage() {
   const titles: LibraryTitle[] = (data ?? []).map((t) => {
     const agg = totals.get(t.jellyfin_id);
     return {
-      ...(t as Omit<LibraryTitle, "rating_avg" | "rating_count">),
+      ...(t as Omit<LibraryTitle, "rating_avg" | "rating_count" | "disc_format">),
       rating_avg: agg ? agg.sum / agg.count : null,
       rating_count: agg?.count ?? 0,
+      disc_format: discs.get(discKey(t.media_type, t.tmdb_id)) ?? null,
     };
   });
 

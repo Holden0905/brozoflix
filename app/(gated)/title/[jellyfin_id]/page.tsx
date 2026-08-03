@@ -3,12 +3,15 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { DiscBadge } from "@/components/disc-badge";
+import { FormatControl } from "@/components/format-control";
 import { Poster } from "@/components/poster";
 import { RatingControl } from "@/components/rating-control";
 import { db } from "@/lib/db";
 import { formatRuntime, formatSeasons, posterUrl } from "@/lib/format";
 import { NAME_COOKIE, validateName } from "@/lib/identity";
-import type { Rating, Title } from "@/lib/types";
+import { SESSION_COOKIE, getSessionRole } from "@/lib/session";
+import type { PhysicalMedia, Rating, Title } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +48,21 @@ export default async function TitleDetailPage({ params }: Props) {
   if (ratingErr) throw new Error(`Failed to load ratings: ${ratingErr.message}`);
 
   const viewerName = validateName(cookieStore.get(NAME_COOKIE)?.value);
+
+  // Discs key on media_type + tmdb_id, so this lookup is independent of the
+  // jellyfin_id that got us here.
+  const [{ data: discRow, error: discErr }, role] = await Promise.all([
+    db
+      .from("physical_media")
+      .select("*")
+      .eq("media_type", t.media_type)
+      .eq("tmdb_id", t.tmdb_id)
+      .maybeSingle(),
+    getSessionRole(cookieStore.get(SESSION_COOKIE)?.value, process.env.COOKIE_SECRET!),
+  ]);
+  if (discErr) throw new Error(`Failed to load disc info: ${discErr.message}`);
+  const disc = (discRow ?? null) as PhysicalMedia | null;
+  const isAdmin = role === "admin";
 
   const backdrop = posterUrl(t.backdrop_path, "original");
   const meta = [
@@ -104,6 +122,14 @@ export default async function TitleDetailPage({ params }: Props) {
             {meta && (
               <p className="mt-2 text-sm text-muted-foreground sm:text-base">{meta}</p>
             )}
+            {disc && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <DiscBadge format={disc.format} />
+                {disc.note && (
+                  <span className="min-w-0 text-xs text-muted-foreground">{disc.note}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -145,6 +171,17 @@ export default async function TitleDetailPage({ params }: Props) {
             viewerName={viewerName}
             initialRatings={(ratingRows ?? []) as Rating[]}
           />
+
+          {isAdmin && (
+            <FormatControl
+              mediaType={t.media_type}
+              tmdbId={t.tmdb_id}
+              title={t.title}
+              year={t.year}
+              posterPath={t.poster_path}
+              initial={disc}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             {added && <span>Added {added}</span>}

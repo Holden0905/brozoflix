@@ -41,6 +41,25 @@ export interface Rating {
   created_at: string;
 }
 
+export type DiscFormat = 'dvd' | 'bluray' | 'uhd';
+
+/**
+ * A disc on the shelf. Keyed on tmdb_id rather than jellyfin_id on purpose:
+ * discs outlive re-encodes, and you can own one you haven't ripped yet — so a
+ * row here may have no counterpart in `titles`.
+ */
+export interface PhysicalMedia {
+  id: string;
+  media_type: MediaType;
+  tmdb_id: number;
+  title: string | null;
+  year: number | null;
+  poster_path: string | null;
+  format: DiscFormat;
+  note: string | null;
+  created_at: string;
+}
+
 export interface SearchResult {
   media_type: MediaType;
   tmdb_id: number;
