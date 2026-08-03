@@ -22,14 +22,17 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
+      // Separate files, not the same PNGs relabelled: a maskable icon needs a
+      // full-bleed background and the artwork pulled inside the 80% safe
+      // circle, or a launcher's mask crops the cat's ears off.
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/icon-192-maskable.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-512-maskable.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

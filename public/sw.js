@@ -3,10 +3,15 @@
  * Deliberately does NOT cache pages or API responses — a stale catalog
  * defeats the purpose of a "do we have this?" app.
  */
-const CACHE = "brozoflix-shell-v1";
+// Bump on any shell asset change. Icons are served cache-first under
+// unchanged filenames, so without a new cache name an already-installed PWA
+// would keep showing the previous icon forever.
+const CACHE = "brozoflix-shell-v2";
 const SHELL = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/icon-192-maskable.png",
+  "/icons/icon-512-maskable.png",
   "/icons/apple-touch-icon.png",
   "/manifest.webmanifest",
 ];
